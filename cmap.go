@@ -71,9 +71,9 @@ func (cc *ConcurrentMap[K, V]) Set(key K, value V) {
 	cc.mapset(key, value, flagAny)
 }
 
-// Insert the key/value only if the key doesn't already exist.
-func (cc *ConcurrentMap[K, V]) Insert(key K, value V) {
-	cc.mapset(key, value, flagIfNx)
+// Insert the key/value only if the key doesn't already exist. Return true if succesful.
+func (cc *ConcurrentMap[K, V]) Insert(key K, value V) bool {
+	return cc.mapset(key, value, flagIfNx)
 }
 
 // Del, deletes the key/value. Returns the value of the key prior to deletion,
@@ -98,7 +98,7 @@ func (cc *ConcurrentMap[K, V]) Len() int {
 	return int(cc.count.Load())
 }
 
-func (cc *ConcurrentMap[K, V]) mapset(key K, value V, flag int) {
+func (cc *ConcurrentMap[K, V]) mapset(key K, value V, flag int) bool {
 	cm := cc.cm.Load()
 
 	fullhash := cm.hash(key)
@@ -150,11 +150,11 @@ bucketLoop:
 			if b.key[i] == key {
 				if flag == flagIfNx { // insert only if key doesn't exist
 					bucket.Unlock()
-					return
+					return false
 				}
 				b.value[i] = value
 				bucket.Unlock()
-				return
+				return true
 			}
 		}
 
@@ -181,6 +181,7 @@ bucketLoop:
 	insertB.value[insertI] = value
 	bucket.Unlock()
 	cc.count.Add(1)
+	return true
 }
 
 func (cc *ConcurrentMap[K, V]) mapget(key K) (v V, ok bool) {

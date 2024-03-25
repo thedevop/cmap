@@ -63,21 +63,23 @@ func TestConcurrentMapSet(t *testing.T) {
 
 func TestConcurrentMapInsert(t *testing.T) {
 	tests := []struct {
-		key    string
-		value  int
-		expect int
+		key      string
+		value    int
+		expectOk bool
+		expect   int
 	}{
-		{"one", 1, 1},
-		{"two", 2, 2},
-		{"three", 3, 3},
-		{"one", 111, 1},
-		{"two", 222, 2},
-		{"three", 333, 3},
+		{"one", 1, true, 1},
+		{"two", 2, true, 2},
+		{"three", 3, true, 3},
+		{"one", 111, false, 1},
+		{"two", 222, false, 2},
+		{"three", 333, false, 3},
 	}
 	c := NewSize[string, int](0)
 
 	for _, tt := range tests {
-		c.Insert(tt.key, tt.value)
+		ok := c.Insert(tt.key, tt.value)
+		require.Equal(t, tt.expectOk, ok)
 		v, ok := c.Get(tt.key)
 		require.True(t, ok)
 		require.Equal(t, tt.expect, v)
