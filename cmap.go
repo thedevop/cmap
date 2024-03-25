@@ -21,6 +21,10 @@ const (
 	emptyOne       = 1 // this cell is empty
 	evacuatedEmpty = 2 // cell is empty, bucket is evacuated.
 	minTopHash     = 5 // minimum tophash for a normal filled cell.
+
+	flagAny  = 0
+	flagIfNx = 1 // only if key does not exist
+	flagIfEx = 2 // only if key already exist
 )
 
 // ConcurrentMap is hashmap that's safe for concurrent read/write access. Its implementation is
@@ -62,9 +66,14 @@ func (cc *ConcurrentMap[K, V]) Value(key K) (v V) {
 	return
 }
 
-// Set the key/value. IF the key existed, updates the value.
+// Set the key/value. If the key existed, updates the value.
 func (cc *ConcurrentMap[K, V]) Set(key K, value V) {
-	cc.mapset(key, value)
+	cc.mapset(key, value, flagAny)
+}
+
+// Insert the key/value only if the key doesn't already exist.
+func (cc *ConcurrentMap[K, V]) Insert(key K, value V) {
+	cc.mapset(key, value, flagIfNx)
 }
 
 // Del, deletes the key/value. Returns the value of the key prior to deletion,
@@ -89,7 +98,7 @@ func (cc *ConcurrentMap[K, V]) Len() int {
 	return int(cc.count.Load())
 }
 
-func (cc *ConcurrentMap[K, V]) mapset(key K, value V) {
+func (cc *ConcurrentMap[K, V]) mapset(key K, value V, flag int) {
 	cm := cc.cm.Load()
 
 	fullhash := cm.hash(key)
@@ -139,6 +148,10 @@ bucketLoop:
 			}
 
 			if b.key[i] == key {
+				if flag == flagIfNx { // insert only if key doesn't exist
+					bucket.Unlock()
+					return
+				}
 				b.value[i] = value
 				bucket.Unlock()
 				return

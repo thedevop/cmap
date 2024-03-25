@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCMapNew(t *testing.T) {
+func TestConcurrentMapNew(t *testing.T) {
 	c := New[int, bool]()
 	cm := c.cm.Load()
 
@@ -26,7 +26,7 @@ func TestCMapNew(t *testing.T) {
 	require.Equal(t, uint32(0), cm.resize.Load())
 }
 
-func TestCMapNewSize(t *testing.T) {
+func TestConcurrentMapNewSize(t *testing.T) {
 	c := NewSize[int, bool](1000)
 	cm := c.cm.Load()
 
@@ -38,7 +38,7 @@ func TestCMapNewSize(t *testing.T) {
 	require.Equal(t, uint32(0), cm.resize.Load())
 }
 
-func TestCMapAdd(t *testing.T) {
+func TestConcurrentMapSet(t *testing.T) {
 	tests := []struct {
 		key   string
 		value int
@@ -54,9 +54,37 @@ func TestCMapAdd(t *testing.T) {
 		require.Equal(t, tt.key, c.cm.Load().buckets[0].key[i])
 		require.Equal(t, tt.value, c.cm.Load().buckets[0].value[i])
 	}
+
+	c.Set("one", 111)
+	v, ok := c.Get("one")
+	require.True(t, ok)
+	require.Equal(t, 111, v)
 }
 
-func TestCMapAddResize(t *testing.T) {
+func TestConcurrentMapInsert(t *testing.T) {
+	tests := []struct {
+		key    string
+		value  int
+		expect int
+	}{
+		{"one", 1, 1},
+		{"two", 2, 2},
+		{"three", 3, 3},
+		{"one", 111, 1},
+		{"two", 222, 2},
+		{"three", 333, 3},
+	}
+	c := NewSize[string, int](0)
+
+	for _, tt := range tests {
+		c.Insert(tt.key, tt.value)
+		v, ok := c.Get(tt.key)
+		require.True(t, ok)
+		require.Equal(t, tt.expect, v)
+	}
+}
+
+func TestConcurrentMapAddResize(t *testing.T) {
 	c := New[int, bool]()
 	cm := c.cm.Load()
 	B := cm.B
@@ -75,7 +103,7 @@ func TestCMapAddResize(t *testing.T) {
 	require.Equal(t, B+1, newcm.B)
 }
 
-func TestCMapAddResizeSameSize(t *testing.T) {
+func TestConcurrentMapAddResizeSameSize(t *testing.T) {
 	c := New[int, bool]()
 	cm := c.cm.Load()
 	B := cm.B
@@ -102,7 +130,7 @@ func TestCMapAddResizeSameSize(t *testing.T) {
 	require.Equal(t, B, newcm.B)
 }
 
-func TestCMapGet(t *testing.T) {
+func TestConcurrentMapGet(t *testing.T) {
 	tests := []struct {
 		key   string
 		value int
@@ -122,7 +150,7 @@ func TestCMapGet(t *testing.T) {
 	}
 }
 
-func TestCMapDel(t *testing.T) {
+func TestConcurrentMapDel(t *testing.T) {
 	tests := []struct {
 		key   string
 		value int
@@ -189,7 +217,7 @@ func TestCMapDelClearTophash(t *testing.T) {
 	require.EqualValues(t, emptyRest, b.topHash[7])
 }
 
-func TestCMap(t *testing.T) {
+func TestConcurrentMap(t *testing.T) {
 	const threads = 4
 	count := 100000
 
@@ -219,7 +247,7 @@ func TestCMap(t *testing.T) {
 	}
 }
 
-func TestCMapWalk(t *testing.T) {
+func TestConcurrentMapWalk(t *testing.T) {
 	const threads = 4
 	count := 100000
 
