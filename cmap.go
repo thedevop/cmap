@@ -215,23 +215,21 @@ func (cc *ConcurrentMap[K, V]) mapget(key K) (v V, ok bool) {
 		}
 	}
 
+	defer bucket.Unlock()
 	for b := bucket; b != nil; b = b.overflow {
 		for i, hash := range b.topHash {
 			if hash != top {
 				if hash == emptyRest {
-					bucket.Unlock()
 					return
 				}
 				continue
 			}
 
 			if b.key[i] == key {
-				bucket.Unlock()
 				return b.value[i], true
 			}
 		}
 	}
-	bucket.Unlock()
 
 	return
 }
