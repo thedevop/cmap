@@ -321,16 +321,9 @@ func (cc *ConcurrentMap[K, V]) walk(fn WalkFn[K, V]) {
 	var values []V
 
 	cm := cc.cm.Load()
-	newcm := cm.newcm.Load()
 
 	for _, bucket := range cm.buckets {
 		bucket.Lock()
-
-		if bucket.migrated() {
-			if newcm == nil {
-				newcm = cm.newcm.Load()
-			}
-		}
 
 	bucketLoop:
 		for b := bucket; b != nil; b = b.overflow {
